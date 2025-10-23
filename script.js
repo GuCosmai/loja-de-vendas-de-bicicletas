@@ -1,26 +1,10 @@
-import { firebaseConfig, appId, geminiApiKey } from './config.js';
+const { initializeApp } = firebase;
+const { getAuth, signInAnonymously, onAuthStateChanged } = firebase.auth;
+const { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel } = firebase.firestore;
 
-// Importações do Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { 
-    getAuth, 
-    signInAnonymously, 
-    signInWithCustomToken, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { 
-    getFirestore, 
-    doc, 
-    getDoc, 
-    setDoc, 
-    addDoc, 
-    deleteDoc, 
-    onSnapshot, 
-    collection, 
-    query,
-    serverTimestamp,
-    setLogLevel
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// Configuração do Firebase (obtida do ambiente)
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 // Inicializa Firebase
 let app, db, auth;
@@ -106,7 +90,6 @@ function setupAuthListener() {
  */
 async function signIn() {
     try {
-        // O token inicial foi removido, pois agora a configuração é feita no config.js
         await signInAnonymously(auth);
     } catch (error) {
         console.error("Erro ao fazer login:", error);
@@ -357,7 +340,7 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 async function callGeminiAPI(systemPrompt, userQuery) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${__gemini_api_key}`;
     
     const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
     const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };

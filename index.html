@@ -153,8 +153,27 @@
         </div>
     </div>
 
+    <script>
+        // Configuração do Firebase e outras chaves
+        const __app_id = "loja-de-bicicleta-91530";
+        const __firebase_config = JSON.stringify({
+            apiKey: "AIzaSyCGLufoVvJm-laSEMMN37tTzfsLflBJCBw",
+            authDomain: "loja-de-bicicleta-91530.firebaseapp.com",
+            projectId: "loja-de-bicicleta-91530",
+            storageBucket: "loja-de-bicicleta-91530.appspot.com",
+            messagingSenderId: "552430208909",
+            appId: "1:552430208909:web:010df8cbda3d5a83351fc4",
+            measurementId: "G-1KBJ2K4XEG"
+        });
+        const __gemini_api_key = ""; // Adicione sua chave Gemini aqui se precisar
+    </script>
+
     <!-- Firebase SDK -->
-    <script type="module" src="script.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+
+    <script src="script.js"></script>
 
 </body>
 </html>
