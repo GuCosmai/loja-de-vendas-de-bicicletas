@@ -1,4 +1,4 @@
-        // Importações do Firebase
+// Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
@@ -31,13 +31,16 @@
 
         // Elementos da DOM
         const adminPanel = document.getElementById('admin-panel');
-        const adminToggleContainer = document.getElementById('admin-toggle-container'); // Adicionado
-        const adminToggleButton = document.getElementById('admin-toggle-btn'); // Adicionado
+        const adminToggleContainer = document.getElementById('admin-toggle-container');
+        const adminToggleButton = document.getElementById('admin-toggle-btn');
         const bikeGallery = document.getElementById('bike-gallery');
         const addBikeForm = document.getElementById('add-bike-form');
         const addBikeButton = document.getElementById('add-bike-button');
         const loadingState = document.getElementById('loading-state');
         const emptyState = document.getElementById('empty-state');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const searchBar = document.getElementById('search-bar');
+        const sortBy = document.getElementById('sort-by');
 
         // Novos elementos da API Gemini
         const generateDescBtn = document.getElementById('generate-description-btn');
@@ -60,6 +63,7 @@
         // Referências do Firestore
         let bikesCollectionRef;
         let adminConfigDocRef;
+        let allBikes = [];
 
         /**
          * Inicializa o Firebase e os serviços
@@ -86,11 +90,9 @@
                     userId = user.uid;
                     console.log("Usuário autenticado:", userId);
                     
-                    // Define as referências do Firestore que dependem do appId e userId
                     bikesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'bikes');
                     adminConfigDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'admin');
                     
-                    // Verifica o status de admin e carrega as bicicletas
                     await checkAdminStatus(userId);
                     loadBikes();
 
@@ -118,27 +120,19 @@
 
         /**
          * Verifica se o usuário atual é o admin.
-         * O primeiro usuário a carregar a app se torna o admin.
          */
         async function checkAdminStatus(currentUserId) {
             try {
                 const docSnap = await getDoc(adminConfigDocRef);
                 
                 if (docSnap.exists() && docSnap.data().ownerId) {
-                    // Documento de admin já existe, vamos verificar
-                    if (docSnap.data().ownerId === currentUserId) {
-                        isAdmin = true;
-                    } else {
-                        isAdmin = false;
-                    }
+                    isAdmin = docSnap.data().ownerId === currentUserId;
                 } else {
-                    // Documento não existe, este é o primeiro usuário.
                     console.log("Nenhum admin encontrado. Definindo usuário atual como admin.");
                     await setDoc(adminConfigDocRef, { ownerId: currentUserId });
                     isAdmin = true;
                 }
                 
-                // Atualiza a UI com base no status de admin
                 updateAdminUI();
 
             } catch (error) {
@@ -150,41 +144,28 @@
          * Mostra ou oculta o painel de admin
          */
         function updateAdminUI() {
-            if (isAdmin) {
-                // Em vez de mostrar o painel, mostramos o *botão*
-                adminToggleContainer.classList.remove('hidden');
-            } else {
-                adminToggleContainer.classList.add('hidden');
-                adminPanel.classList.add('hidden'); // Garante que o painel está oculto se não for admin
+            adminToggleContainer.classList.toggle('hidden', !isAdmin);
+            if (!isAdmin) {
+                adminPanel.classList.add('hidden');
             }
-            // (A lógica de mostrar botões de remoção está em renderBike)
         }
 
         /**
          * Carrega as bicicletas do Firestore em tempo real
          */
         function loadBikes() {
-            const q = query(bikesCollectionRef); // Sem orderBy para evitar necessidade de índices
+            const q = query(bikesCollectionRef);
             
             onSnapshot(q, (snapshot) => {
                 loadingState.classList.add('hidden');
                 
                 if (snapshot.empty) {
                     emptyState.classList.remove('hidden');
-                    bikeGallery.innerHTML = ''; // Limpa galeria caso ela tivesse algo
+                    bikeGallery.innerHTML = '';
                 } else {
                     emptyState.classList.add('hidden');
-                    bikeGallery.innerHTML = ''; // Limpa galeria antes de recarregar
-                    
-                    let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    
-                    // Ordena por data de criação no cliente (mais recentes primeiro)
-                    // (Opcional, mas melhor que não ter ordem)
-                    docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-
-                    docs.forEach(doc => {
-                        renderBikeCard(doc.id, doc);
-                    });
+                    allBikes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderGallery(allBikes);
                 }
             }, (error) => {
                 console.error("Erro ao carregar bicicletas:", error);
@@ -194,25 +175,26 @@
         }
 
         /**
+         * Renderiza a galeria com uma lista de bicicletas
+         */
+        function renderGallery(bikes) {
+            bikeGallery.innerHTML = '';
+            bikes.forEach(bike => {
+                renderBikeCard(bike.id, bike);
+            });
+        }
+
+        /**
          * Renderiza um card de bicicleta na galeria
          */
         function renderBikeCard(id, data) {
-            const price = data.price ? 
-                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.price) : 
-                'Preço indisponível';
-
-            // Usa a primeira imagem como capa, ou um placeholder
-            const mainImageUrl = data.images && data.images.length > 0 ? 
-                                 data.images[0] : 
-                                 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Sem+Imagem';
+            const price = data.price ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.price) : 'Preço indisponível';
+            const mainImageUrl = data.images && data.images.length > 0 ? data.images[0] : 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Sem+Imagem';
             
             const card = document.createElement('div');
-            // Adicionada classe 'bike-card' e 'cursor-pointer'
             card.className = "bike-card bg-white rounded-lg shadow-md overflow-hidden transition-shadow duration-300 hover:shadow-xl relative cursor-pointer";
-            // Armazena todas as imagens no dataset para o modal
             card.dataset.images = JSON.stringify(data.images || []);
 
-            // Botão de remover (só para admin)
             let deleteButtonHtml = '';
             if (isAdmin) {
                 deleteButtonHtml = `
@@ -226,11 +208,7 @@
 
             card.innerHTML = `
                 ${deleteButtonHtml}
-                <img src="${mainImageUrl}" 
-                     alt="[Imagem de ${data.model || 'bicicleta'}]" 
-                     class="w-full h-56 object-cover pointer-events-none"
-                     onerror="this.src='https://placehold.co/600x400/e2e8f0/94a3b8?text=Imagem+Inválida'">
-                
+                <img src="${mainImageUrl}" alt="[Imagem de ${data.model || 'bicicleta'}]" class="w-full h-56 object-cover pointer-events-none" onerror="this.src='https://placehold.co/600x400/e2e8f0/94a3b8?text=Imagem+Inválida'">
                 <div class="p-4 pointer-events-none">
                     <h3 class="text-xl font-semibold text-gray-900 truncate" title="${data.model}">${data.model || 'Modelo não informado'}</h3>
                     <p class="text-gray-600 mb-3">${data.brand || 'Marca não informada'}</p>
@@ -247,20 +225,15 @@
          */
         async function handleAddBike(event) {
             event.preventDefault();
-            if (!isAdmin) return; // Segurança extra
+            if (!isAdmin) return;
 
             const model = addBikeForm['bike-model'].value.trim();
             const brand = addBikeForm['bike-brand'].value.trim();
             const price = parseFloat(addBikeForm['bike-price'].value);
-            const description = bikeDescriptionTextarea.value.trim(); // Novo
-            // Pega as URLs da textarea, separa por vírgula, remove espaços e filtra strings vazias
-            const imageUrls = addBikeForm['bike-image-urls'].value
-                .split(',')
-                .map(url => url.trim())
-                .filter(url => url.length > 0);
+            const description = bikeDescriptionTextarea.value.trim();
+            const imageUrls = addBikeForm['bike-image-urls'].value.split(',').map(url => url.trim()).filter(url => url.length > 0);
 
             if (!model || !brand || !price || imageUrls.length === 0) {
-                // (Idealmente, mostrar um modal de erro, mas console.error por enquanto)
                 console.error("Formulário inválido ou sem imagens");
                 return;
             }
@@ -273,12 +246,11 @@
                     model: model,
                     brand: brand,
                     price: price,
-                    images: imageUrls, // Salva o array de imagens
-                    description: description, // Novo
-                    createdAt: serverTimestamp() // Marca a data de criação
+                    images: imageUrls,
+                    description: description,
+                    createdAt: serverTimestamp()
                 });
                 
-                // Limpa o formulário
                 addBikeForm.reset();
 
             } catch (error) {
@@ -290,14 +262,10 @@
         }
 
         /**
-         * Manipulador para remover uma bicicleta (chamado pelo handleGalleryClick)
+         * Manipulador para remover uma bicicleta
          */
         async function handleDeleteBike(deleteButton) {
             const bikeId = deleteButton.dataset.id;
-            
-            // (Idealmente, usar um modal de confirmação em vez de 'confirm')
-            // Como 'confirm' é proibido, vamos deletar diretamente.
-            // Para produção, implemente um modal de confirmação customizado.
             console.log("Deletando bicicleta:", bikeId);
             
             try {
@@ -308,21 +276,14 @@
             }
         }
 
-        // --- Funções do Modal Lightbox (Adicionadas) ---
-
-        /**
-         * Manipulador de cliques na galeria (Event Delegation)
-         */
         function handleGalleryClick(event) {
-            // 1. Verificar se foi clique no botão de deletar
             const deleteButton = event.target.closest('.delete-btn');
-            if (deleteButton && isAdmin) { // Só deleta se for admin
-                event.stopPropagation(); // Impede que o card clique também
+            if (deleteButton && isAdmin) {
+                event.stopPropagation();
                 handleDeleteBike(deleteButton);
                 return;
             }
 
-            // 2. Verificar se foi clique num card de bicicleta
             const bikeCard = event.target.closest('.bike-card');
             if (bikeCard) {
                 const imagesJson = bikeCard.dataset.images;
@@ -341,80 +302,58 @@
             }
         }
 
-        /**
-         * Abre o modal lightbox com as imagens fornecidas
-         */
         function openModal(images) {
             currentModalImages = images;
             currentModalIndex = 0;
             
-            // Mostra/esconde botões de navegação
             const navVisible = images.length > 1;
             modalPrevBtn.classList.toggle('hidden', !navVisible);
             modalNextBtn.classList.toggle('hidden', !navVisible);
             modalCounter.classList.toggle('hidden', !navVisible);
 
-            showModalImage(0); // Mostra a primeira imagem
+            showModalImage(0);
 
             modalOverlay.classList.remove('hidden');
             setTimeout(() => {
                 modalOverlay.classList.remove('opacity-0');
                 modalContent.classList.remove('scale-95');
-            }, 10); // Pequeno atraso para a transição CSS funcionar
+            }, 10);
         }
 
-        /**
-         * Fecha o modal lightbox
-         */
         function closeModal() {
             modalOverlay.classList.add('opacity-0');
             modalContent.classList.add('scale-95');
             setTimeout(() => {
                 modalOverlay.classList.add('hidden');
-                modalImg.src = ""; // Limpa a imagem
+                modalImg.src = "";
                 currentModalImages = [];
                 currentModalIndex = 0;
-            }, 300); // Espera a transição terminar
+            }, 300);
         }
 
-        /**
-         * Mostra uma imagem específica no modal pelo índice
-         */
         function showModalImage(index) {
             currentModalIndex = index;
             modalImg.src = currentModalImages[index];
             modalCounter.textContent = `${index + 1} / ${currentModalImages.length}`;
             
-            // Fallback se a imagem falhar
             modalImg.onerror = () => {
                 modalImg.src = 'https://placehold.co/800x600/e2e8f0/94a3b8?text=Imagem+Inválida';
             };
         }
 
-
-        // --- Funções da API Gemini ---
-
-        /**
-         * Wrapper de Fetch com retentativa (exponential backoff) para a API Gemini.
-         */
         async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
             try {
                 const response = await fetch(url, options);
-                // 429: Rate limit, 5xx: Erros de servidor
                 if (response.status === 429 || response.status >= 500) { 
                     if (retries > 0) {
-                        console.warn(`API Gemini: Limite de taxa ou erro. A tentar novamente em ${delay}ms...`);
                         await new Promise(res => setTimeout(res, delay));
                         return fetchWithBackoff(url, options, retries - 1, delay * 2);
-                    } else {
-                        throw new Error("API Gemini: Máximo de retentativas excedido.");
                     }
+                    throw new Error("API Gemini: Máximo de retentativas excedido.");
                 }
                 return response;
             } catch (error) {
-                // Erros de rede
                 if (retries > 0) {
-                    console.warn(`API Gemini: Erro de rede. A tentar novamente em ${delay}ms...`, error);
                     await new Promise(res => setTimeout(res, delay));
                     return fetchWithBackoff(url, options, retries - 1, delay * 2);
                 }
@@ -422,31 +361,17 @@
             }
         }
 
-        /**
-         * Chama a API Gemini para gerar texto.
-         */
         async function callGeminiAPI(systemPrompt, userQuery) {
-            const apiKey = ""; // A chave é fornecida pelo ambiente
+            const apiKey = typeof __gemini_api_key !== 'undefined' ? __gemini_api_key : "";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }]
-                },
-            };
-
-            const options = {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            };
+            const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
+            const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
 
             try {
                 const response = await fetchWithBackoff(apiUrl, options);
                 if (!response.ok) {
                     const errorBody = await response.text();
-                    console.error("Erro na API Gemini:", response.status, errorBody);
                     throw new Error(`Erro da API Gemini: ${response.statusText}`);
                 }
                 
@@ -456,33 +381,26 @@
                 if (text) {
                     return text;
                 } else {
-                    console.error("Resposta inválida da API Gemini:", JSON.stringify(result, null, 2));
                     throw new Error("Nenhuma resposta de texto válida da API Gemini.");
                 }
             } catch (error) {
                 console.error("Falha ao chamar a API Gemini:", error);
-                throw error; // Propaga o erro
+                throw error;
             }
         }
 
-        /**
-         * Manipulador para o botão "Gerar Descrição".
-         */
         async function handleGenerateDescription(event) {
-            event.preventDefault(); // Impede o envio do formulário
+            event.preventDefault();
 
             const model = addBikeForm['bike-model'].value.trim();
             const brand = addBikeForm['bike-brand'].value.trim();
             const price = addBikeForm['bike-price'].value;
 
             if (!model || !brand) {
-                // (Idealmente, um modal de erro)
-                console.warn("Modelo e Marca são necessários para gerar descrição.");
                 bikeDescriptionTextarea.placeholder = "Por favor, preencha o Modelo e a Marca primeiro.";
                 return;
             }
 
-            // Mostra o loading
             descLoading.classList.remove('hidden');
             generateDescBtn.disabled = true;
             bikeDescriptionTextarea.value = "";
@@ -493,59 +411,97 @@
 
             try {
                 const description = await callGeminiAPI(systemPrompt, userQuery);
-                bikeDescriptionTextarea.value = description.trim(); // Coloca o texto na textarea
+                bikeDescriptionTextarea.value = description.trim();
             } catch (error) {
-                console.error("Erro ao gerar descrição:", error);
                 bikeDescriptionTextarea.placeholder = "Ocorreu um erro ao gerar a descrição.";
             } finally {
-                // Esconde o loading
                 descLoading.classList.add('hidden');
                 generateDescBtn.disabled = false;
             }
         }
 
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark');
+                darkModeToggle.textContent = 'Modo Claro';
+            } else {
+                document.body.classList.remove('dark');
+                darkModeToggle.textContent = 'Modo Escuro';
+            }
+        }
 
-        // --- Inicialização ---
-        
-        // Adiciona os event listeners quando o DOM estiver pronto
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        }
+
+        function filterAndSortBikes() {
+            let filteredBikes = [...allBikes];
+            const searchQuery = searchBar.value.toLowerCase();
+
+            if (searchQuery) {
+                filteredBikes = filteredBikes.filter(bike => 
+                    bike.model.toLowerCase().includes(searchQuery) || 
+                    bike.brand.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            const sortValue = sortBy.value;
+            if (sortValue !== 'default') {
+                const [key, order] = sortValue.split('-');
+                filteredBikes.sort((a, b) => {
+                    let valA = a[key];
+                    let valB = b[key];
+
+                    if (key === 'price') {
+                        valA = parseFloat(valA);
+                        valB = parseFloat(valB);
+                    } else {
+                        valA = valA.toLowerCase();
+                        valB = valB.toLowerCase();
+                    }
+
+                    if (valA < valB) return order === 'asc' ? -1 : 1;
+                    if (valA > valB) return order === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            renderGallery(filteredBikes);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             addBikeForm.addEventListener('submit', handleAddBike);
-            // Listener único para a galeria
             bikeGallery.addEventListener('click', handleGalleryClick);
-
-            // Listener do botão de toggle do admin (Adicionado)
             adminToggleButton.addEventListener('click', () => {
                 const isHidden = adminPanel.classList.toggle('hidden');
-                if (isHidden) {
-                    adminToggleButton.textContent = 'Mostrar Painel de Administrador';
-                } else {
-                    adminToggleButton.textContent = 'Ocultar Painel de Administrador';
+                adminToggleButton.textContent = isHidden ? 'Mostrar Painel de Administrador' : 'Ocultar Painel de Administrador';
+                if (!isHidden) {
                     adminPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             });
-
-            // Listener do botão Gemini (Novo)
             generateDescBtn.addEventListener('click', handleGenerateDescription);
-
-            // Listeners do Modal
             modalCloseBtn.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (event) => {
-                // Fecha se clicar fora do conteúdo
-                if (event.target === modalOverlay) {
-                    closeModal();
-                }
+                if (event.target === modalOverlay) closeModal();
             });
-
             modalPrevBtn.addEventListener('click', () => {
                 const newIndex = (currentModalIndex - 1 + currentModalImages.length) % currentModalImages.length;
                 showModalImage(newIndex);
             });
-
             modalNextBtn.addEventListener('click', () => {
                 const newIndex = (currentModalIndex + 1) % currentModalImages.length;
                 showModalImage(newIndex);
             });
+
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+
+            darkModeToggle.addEventListener('click', toggleTheme);
+            searchBar.addEventListener('input', filterAndSortBikes);
+            sortBy.addEventListener('change', filterAndSortBikes);
             
-            // Inicia a aplicação
             initFirebase();
         });

@@ -1,27 +1,81 @@
+/* Define a fonte Inter como padrão */
+body {
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
 
-        /* Define a fonte Inter como padrão */
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Estilo para um loader simples */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Estilos para o Modal Lightbox */
-        .modal-overlay {
-            transition: opacity 0.3s ease;
-        }
-        .modal-content {
-            transition: transform 0.3s ease;
-        }
-    
+/* Estilo para um loader simples */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para o Modal Lightbox */
+.modal-overlay {
+    transition: opacity 0.3s ease;
+}
+
+.modal-content {
+    transition: transform 0.3s ease;
+}
+
+/* Dark Mode */
+.dark {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+
+.dark .bg-white {
+    background-color: #2d3748;
+}
+
+.dark .bg-gray-100 {
+    background-color: #1a202c;
+}
+
+.dark .text-gray-800 {
+    color: #e2e8f0;
+}
+
+.dark .text-gray-600 {
+    color: #a0aec0;
+}
+
+.dark .text-blue-100 {
+    color: #bee3f8;
+}
+
+.dark .border-gray-300 {
+    border-color: #4a5568;
+}
+
+.dark .shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .from-blue-600 {
+    --tw-gradient-from: #2b6cb0;
+}
+
+.dark .to-blue-800 {
+    --tw-gradient-to: #2c5282;
+}
+
+.dark #dark-mode-toggle {
+    background-color: #4a5568;
+}
+
+.dark #search-bar, .dark #sort-by {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
